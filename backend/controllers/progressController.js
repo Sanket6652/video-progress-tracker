@@ -25,14 +25,20 @@ function mergeIntervals(intervals) {
   return merged;
 }
 
-
 const updateProgress = async (req, res) => {
-  const { userId, videoId, interval, lastWatchedTime, videoDuration } = req.body;
+  const { userId, videoId, interval, lastWatchedTime, videoDuration } =
+    req.body;
 
   if (
-    !userId || !videoId || !interval || typeof videoDuration !== "number" ||
-    typeof interval.start !== "number" || typeof interval.end !== "number" ||
-    interval.start < 0 || interval.end <= interval.start || interval.end > videoDuration
+    !userId ||
+    !videoId ||
+    !interval ||
+    typeof videoDuration !== "number" ||
+    typeof interval.start !== "number" ||
+    typeof interval.end !== "number" ||
+    interval.start < 0 ||
+    interval.end <= interval.start ||
+    interval.end > videoDuration
   ) {
     return res.status(400).json({ message: "Invalid input data" });
   }
@@ -53,14 +59,23 @@ const updateProgress = async (req, res) => {
       progress.mergedIntervals = mergeIntervals(progress.mergedIntervals);
 
       if (typeof lastWatchedTime === "number") {
-        progress.lastWatchedTime = Math.max(progress.lastWatchedTime, lastWatchedTime);
+        progress.lastWatchedTime = Math.max(
+          progress.lastWatchedTime,
+          lastWatchedTime
+        );
       }
     }
 
     await progress.save();
 
-    const totalWatched = progress.mergedIntervals.reduce((acc, { start, end }) => acc + (end - start), 0);
-    const percentage = Math.min(100, (totalWatched / progress.videoDuration) * 100).toFixed(2);
+    const totalWatched = progress.mergedIntervals.reduce(
+      (acc, { start, end }) => acc + (end - start),
+      0
+    );
+    const percentage = Math.min(
+      100,
+      (totalWatched / progress.videoDuration) * 100
+    ).toFixed(2);
 
     res.json({
       message: "Progress updated",
@@ -84,8 +99,14 @@ const getProgress = async (req, res) => {
       return res.status(404).json({ message: "Progress not found" });
     }
 
-    const totalWatched = progress.mergedIntervals.reduce((acc, { start, end }) => acc + (end - start), 0);
-    const percentage = Math.min(100, (totalWatched / progress.videoDuration) * 100).toFixed(2);
+    const totalWatched = progress.mergedIntervals.reduce(
+      (acc, { start, end }) => acc + (end - start),
+      0
+    );
+    const percentage = Math.min(
+      100,
+      (totalWatched / progress.videoDuration) * 100
+    ).toFixed(2);
 
     res.json({
       percentage: parseFloat(percentage),
