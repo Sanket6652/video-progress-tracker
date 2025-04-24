@@ -5,7 +5,7 @@ interface Interval {
   start: number;
   end: number;
 }
-
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 export function useVideoProgress(videoId: string, videoDuration: number) {
   const userId = "680a07c23f297e1f4d0f5a58";
   console.log(videoDuration);
@@ -19,7 +19,7 @@ export function useVideoProgress(videoId: string, videoDuration: number) {
     const fetchProgress = async () => {
       try {
         const res = await axios.get(
-          `http://localhost:5000/api/progress/${userId}/${encodeURIComponent(
+          `${API_BASE_URL}/progress/${userId}/${encodeURIComponent(
             videoId
           )}`
         );
@@ -39,7 +39,7 @@ export function useVideoProgress(videoId: string, videoDuration: number) {
   const addWatchedInterval = useCallback(
     async (start: number, end: number) => {
       try {
-        const res = await axios.post("http://localhost:5000/progress/update", {
+        const res = await axios.post(`${API_BASE_URL}/progress/update`, {
           userId,
           videoId,
           interval: { start, end },
@@ -60,7 +60,7 @@ export function useVideoProgress(videoId: string, videoDuration: number) {
   const resetProgress = useCallback(async () => {
     try {
       await axios.delete(
-        `http://localhost:5000/progress/${userId}/${encodeURIComponent(
+        `${API_BASE_URL}/progress/${userId}/${encodeURIComponent(
           videoId
         )}`
       );

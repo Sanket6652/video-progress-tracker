@@ -15,10 +15,10 @@ interface RegisterCredentials {
   email: string;
   password: string;
 }
-
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 export async function login({ email, password }: LoginCredentials) {
   try {
-    const response = await fetch("http://localhost:5000/auth/login", {
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -37,7 +37,7 @@ export async function login({ email, password }: LoginCredentials) {
 
 export async function register({ name, email, password }: RegisterCredentials) {
   try {
-    const response = await fetch("http://localhost:5000/auth/register", {
+    const response = await fetch(`${API_BASE_URL}/auth/register`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
