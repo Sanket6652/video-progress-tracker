@@ -3,49 +3,38 @@ const Progress = require("../models/progress");
 function mergeIntervals(intervals) {
   if (!Array.isArray(intervals) || intervals.length === 0) return [];
 
+  // Sort by start time
   intervals.sort((a, b) => a.start - b.start);
 
-  const merged = [intervals[0]];
+  const merged = [];
+  let current = intervals[0];
 
   for (let i = 1; i < intervals.length; i++) {
-    const prev = merged[merged.length - 1];
-    const curr = intervals[i];
+    const next = intervals[i];
 
-    if (curr.start <= prev.end) {
-      // Merge overlapping/contiguous
-      prev.end = Math.max(prev.end, curr.end);
+    // If overlapping or touching
+    if (next.start <= current.end + 0.1) {
+      current.end = Math.max(current.end, next.end);
     } else {
-      merged.push(curr);
+      merged.push(current);
+      current = next;
     }
   }
 
+  merged.push(current);
   return merged;
 }
 
+
 const updateProgress = async (req, res) => {
-  const { userId, videoId, interval, lastWatchedTime, videoDuration } =
-    req.body;
+  const { userId, videoId, interval, lastWatchedTime, videoDuration } = req.body;
 
   if (
-    !userId ||
-    !videoId ||
-    !interval ||
-    interval.start == null ||
-    interval.end == null ||
-    typeof videoDuration !== "number"
+    !userId || !videoId || !interval || typeof videoDuration !== "number" ||
+    typeof interval.start !== "number" || typeof interval.end !== "number" ||
+    interval.start < 0 || interval.end <= interval.start || interval.end > videoDuration
   ) {
-    return res.status(400).json({ message: "Invalid data" });
-  }
-
-  // Validate interval
-  if (
-    typeof interval.start !== "number" ||
-    typeof interval.end !== "number" ||
-    interval.start < 0 ||
-    interval.end <= interval.start ||
-    interval.end > videoDuration
-  ) {
-    return res.status(400).json({ message: "Invalid interval timing" });
+    return res.status(400).json({ message: "Invalid input data" });
   }
 
   try {
@@ -56,50 +45,38 @@ const updateProgress = async (req, res) => {
         userId,
         videoId,
         videoDuration,
-        intervals: [interval],
-        lastWatchedTime,
+        mergedIntervals: [interval],
+        lastWatchedTime: lastWatchedTime || interval.end,
       });
     } else {
-      if (!Array.isArray(progress.intervals)) progress.intervals = [];
+      progress.mergedIntervals.push(interval);
+      progress.mergedIntervals = mergeIntervals(progress.mergedIntervals);
 
-      progress.intervals.push(interval);
-      progress.intervals = mergeIntervals(progress.intervals);
-
-      if (
-        typeof lastWatchedTime === "number" &&
-        (typeof progress.lastWatchedTime !== "number" ||
-          lastWatchedTime > progress.lastWatchedTime)
-      ) {
-        progress.lastWatchedTime = lastWatchedTime;
+      if (typeof lastWatchedTime === "number") {
+        progress.lastWatchedTime = Math.max(progress.lastWatchedTime, lastWatchedTime);
       }
     }
 
     await progress.save();
 
-    const totalWatchedSeconds = progress.intervals.reduce(
-      (acc, curr) => acc + (curr.end - curr.start),
-      0
-    );
+    const totalWatched = progress.mergedIntervals.reduce((acc, { start, end }) => acc + (end - start), 0);
+    const percentage = Math.min(100, (totalWatched / progress.videoDuration) * 100).toFixed(2);
 
-    const percentage = Math.min(
-      100,
-      (totalWatchedSeconds / videoDuration) * 100
-    ).toFixed(2);
-
-    return res.json({
+    res.json({
       message: "Progress updated",
       percentage: parseFloat(percentage),
       lastWatchedTime: progress.lastWatchedTime,
-      mergedIntervals: progress.intervals,
+      mergedIntervals: progress.mergedIntervals,
     });
   } catch (err) {
-    console.error("Progress update error:", err);
-    return res.status(500).json({ message: "Internal server error" });
+    console.error("Error updating progress:", err);
+    res.status(500).json({ message: "Server error" });
   }
 };
+
 const getProgress = async (req, res) => {
   const { userId, videoId } = req.params;
-console.log(userId,videoId)
+
   try {
     const progress = await Progress.findOne({ userId, videoId });
 
@@ -107,24 +84,19 @@ console.log(userId,videoId)
       return res.status(404).json({ message: "Progress not found" });
     }
 
-    const totalWatchedSeconds = progress.intervals.reduce(
-      (acc, curr) => acc + (curr.end - curr.start),
-      0
-    );
-    const percentage = Math.min(
-      100,
-      (totalWatchedSeconds / progress.videoDuration) * 100
-    ).toFixed(2);
+    const totalWatched = progress.mergedIntervals.reduce((acc, { start, end }) => acc + (end - start), 0);
+    const percentage = Math.min(100, (totalWatched / progress.videoDuration) * 100).toFixed(2);
 
     res.json({
       percentage: parseFloat(percentage),
       lastWatchedTime: progress.lastWatchedTime,
-      mergedIntervals: progress.intervals,
+      mergedIntervals: progress.mergedIntervals,
       duration: progress.videoDuration,
     });
   } catch (err) {
-    console.error("Progress fetch error:", err);
-    res.status(500).json({ message: "Internal server error" });
+    console.error("Error fetching progress:", err);
+    res.status(500).json({ message: "Server error" });
   }
 };
+
 module.exports = { updateProgress, getProgress };

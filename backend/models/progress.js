@@ -1,15 +1,19 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
-const ProgressSchema = new mongoose.Schema({
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    videoId: { type: mongoose.Schema.Types.ObjectId, ref: 'Video', required: true },
-    videoDuration: { type: Number, required: true },
-    intervals: [{ 
-        start: { type: Number, required: true }, 
-        end: { type: Number, required: true } 
-    }],
-    lastWatchedTime: { type: Number, default: 0 }
+const IntervalSchema = new mongoose.Schema({
+  start: Number,
+  end: Number,
 });
 
-const Progress = mongoose.model('Progress', ProgressSchema);
-module.exports = Progress;
+const ProgressSchema = new mongoose.Schema({
+  userId: { type: String, required: true },
+  videoId: { type: String, required: true },
+  videoDuration: { type: Number, required: true },
+  mergedIntervals: [IntervalSchema],
+  lastWatchedTime: { type: Number, default: 0 },
+  updatedAt: { type: Date, default: Date.now },
+});
+
+ProgressSchema.index({ userId: 1, videoId: 1 }, { unique: true });
+
+module.exports = mongoose.model("Progress", ProgressSchema);
